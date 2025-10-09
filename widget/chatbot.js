@@ -112,7 +112,7 @@
 
                         <!-- Powered by -->
                         <div class="chat-footer">
-                            <span>Powered by Agent Eva</span>
+                            <span>Powered by AgentEva</span>
                         </div>
                     </div>
                 </div>

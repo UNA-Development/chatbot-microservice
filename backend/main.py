@@ -1,52 +1,72 @@
 """
 RX4M Chatbot Backend API
-Simple FastAPI server for chat and SMS support
+Simple FastAPI server for chat and SMS support with OpenAI Assistants API
 """
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
-import os
+from pathlib import Path
+from dotenv import load_dotenv
 from datetime import datetime
-import openai
+import os
 import yaml
+import traceback
+import re
+from openai import OpenAI
 
-app = FastAPI(title="RX4M Chatbot API", version="1.0.0")
+app = FastAPI(title="RX4M Chatbot API", version="2.0.0")
 
-# CORS configuration - update with your actual domains in production
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for local testing
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load OpenAI API key from environment
-from dotenv import load_dotenv
-from pathlib import Path
-# Load .env from parent directory
+# Load environment variables
 env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
-api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=api_key)
+load_dotenv(dotenv_path=env_path, override=True)
 
-# Load site configurations from YAML files
-def load_site_config(site_name: str) -> dict:
-    """Load configuration from YAML file"""
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Load minimal site configurations (only branding for widget)
+def load_widget_config(site_name: str) -> dict:
+    """Load minimal widget configuration from YAML"""
     config_path = Path(__file__).parent.parent / 'config' / f'{site_name}.yaml'
     try:
         with open(config_path, 'r') as f:
-            return yaml.safe_load(f)
+            full_config = yaml.safe_load(f)
+            # Only extract what we need for the widget endpoint
+            return {
+                "site": full_config.get("site", {}),
+                "branding": full_config.get("branding", {})
+            }
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Configuration for {site_name} not found")
 
-# Load configurations for both sites
-SITE_CONFIGS = {
-    "rx4miracles": load_site_config("rx4miracles"),
-    "louisianadental": load_site_config("louisianadental"),
+# Load minimal configurations for widget endpoint only
+WIDGET_CONFIGS = {
+    "rx4miracles": load_widget_config("rx4miracles"),
+    "louisianadental": load_widget_config("louisianadental"),
 }
+
+# Load assistant IDs
+ASSISTANTS = {
+    "rx4miracles": os.getenv("RX4M_ASSISTANT_ID"),
+    "louisianadental": os.getenv("LOUISIANA_ASSISTANT_ID"),
+}
+
+# Verify assistants are configured
+for site, assistant_id in ASSISTANTS.items():
+    if assistant_id:
+        print(f"✓ {site}: assistant {assistant_id}")
+    else:
+        print(f"⚠ {site}: Assistant ID not configured")
 
 
 # Pydantic models
@@ -80,42 +100,59 @@ async def root():
     return {
         "status": "online",
         "service": "RX4M Chatbot API",
-        "version": "1.0.0",
+        "version": "2.0.0",
+        "rag_provider": "OpenAI Assistants API"
     }
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(message: ChatMessage):
     """
-    Handle chat messages from the widget
+    Handle chat messages using OpenAI Assistants API
     """
-    if message.site not in SITE_CONFIGS:
+    if message.site not in ASSISTANTS:
         raise HTTPException(status_code=400, detail="Invalid site identifier")
 
-    site_config = SITE_CONFIGS[message.site]
+    assistant_id = ASSISTANTS.get(message.site)
+    if not assistant_id:
+        raise HTTPException(status_code=500, detail=f"Assistant not configured for {message.site}")
 
     try:
-        # Call OpenAI API using config from YAML
-        response = client.chat.completions.create(
-            model=site_config["ai"]["model"],
-            messages=[
-                {"role": "system", "content": site_config["ai"]["system_prompt"]},
-                {"role": "user", "content": message.message},
-            ],
-            temperature=site_config["ai"]["temperature"],
-            max_tokens=site_config["ai"]["max_tokens"],
+        # Create a simple thread without file attachments (faster)
+        # The assistant instructions already contain the knowledge
+        thread = client.beta.threads.create(
+            messages=[{
+                "role": "user",
+                "content": message.message
+            }]
         )
 
-        ai_response = response.choices[0].message.content
-
-        return ChatResponse(
-            response=ai_response,
-            session_id=message.session_id or f"session_{datetime.now().timestamp()}",
-            timestamp=datetime.now().isoformat(),
+        # Run the assistant
+        run = client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=assistant_id
         )
+
+        # Wait for completion and get response
+        if run.status == 'completed':
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            ai_response = messages.data[0].content[0].text.value
+
+            # Remove citation annotations like 【4:0†source】
+            ai_response = re.sub(r'【\d+:\d+†[^】]+】', '', ai_response)
+
+            return ChatResponse(
+                response=ai_response,
+                session_id=message.session_id or thread.id,
+                timestamp=datetime.now().isoformat(),
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Assistant run failed with status: {run.status}"
+            )
 
     except Exception as e:
-        import traceback
         print(f"ERROR: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(
@@ -128,10 +165,10 @@ async def get_widget_config(site: str):
     """
     Get widget configuration for a specific site
     """
-    if site not in SITE_CONFIGS:
+    if site not in WIDGET_CONFIGS:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    config = SITE_CONFIGS[site]
+    config = WIDGET_CONFIGS[site]
     return WidgetConfig(
         site_name=config["site"]["name"],
         primary_color=config["branding"]["primary_color"],
@@ -143,14 +180,11 @@ async def get_widget_config(site: str):
 async def sms_webhook(message: SMSMessage):
     """
     Handle incoming SMS messages (Twilio webhook)
-    TODO: Implement SMS handling
+    TODO: Implement SMS handling with Assistants API
     """
-    # This will be called by Twilio when SMS is received
-    # For now, just acknowledge receipt
     return {"status": "received", "message": "SMS handling coming soon"}
 
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
