@@ -3,10 +3,10 @@ RX4M Chatbot Backend API
 Simple FastAPI server for chat and SMS support
 """
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional
 import os
 from datetime import datetime
 import openai
@@ -29,7 +29,6 @@ from pathlib import Path
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("OPENAI_API_KEY")
-print(f"DEBUG: Loaded API key ending with: ...{api_key[-4:] if api_key else 'NONE'}")
 client = openai.OpenAI(api_key=api_key)
 
 # Simple site configuration
