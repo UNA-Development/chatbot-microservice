@@ -10,6 +10,7 @@ from typing import Optional
 import os
 from datetime import datetime
 import openai
+import yaml
 
 app = FastAPI(title="RX4M Chatbot API", version="1.0.0")
 
@@ -31,24 +32,20 @@ load_dotenv(dotenv_path=env_path)
 api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=api_key)
 
-# Simple site configuration
+# Load site configurations from YAML files
+def load_site_config(site_name: str) -> dict:
+    """Load configuration from YAML file"""
+    config_path = Path(__file__).parent.parent / 'config' / f'{site_name}.yaml'
+    try:
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Configuration for {site_name} not found")
+
+# Load configurations for both sites
 SITE_CONFIGS = {
-    "rx4miracles": {
-        "name": "RX4 Miracles",
-        "domain": "rx4miracles.org",
-        "system_prompt": """You are a helpful assistant for RX4 Miracles, a healthcare organization.
-Be friendly, professional, and provide accurate information about our services.
-If you don't know something, offer to connect the user with a team member.""",
-        "primary_color": "#0066cc",
-    },
-    "louisianadental": {
-        "name": "Louisiana Dental Plan",
-        "domain": "louisianadentalplan.com",
-        "system_prompt": """You are a helpful assistant for Louisiana Dental Plan.
-Help users with questions about dental coverage, finding providers, and plan benefits.
-Be professional and empathetic. If you need to escalate, offer to have someone call them back.""",
-        "primary_color": "#2c5f2d",
-    },
+    "rx4miracles": load_site_config("rx4miracles"),
+    "louisianadental": load_site_config("louisianadental"),
 }
 
 
@@ -98,15 +95,15 @@ async def chat(message: ChatMessage):
     site_config = SITE_CONFIGS[message.site]
 
     try:
-        # Call OpenAI API
+        # Call OpenAI API using config from YAML
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=site_config["ai"]["model"],
             messages=[
-                {"role": "system", "content": site_config["system_prompt"]},
+                {"role": "system", "content": site_config["ai"]["system_prompt"]},
                 {"role": "user", "content": message.message},
             ],
-            temperature=0.7,
-            max_tokens=500,
+            temperature=site_config["ai"]["temperature"],
+            max_tokens=site_config["ai"]["max_tokens"],
         )
 
         ai_response = response.choices[0].message.content
@@ -136,9 +133,9 @@ async def get_widget_config(site: str):
 
     config = SITE_CONFIGS[site]
     return WidgetConfig(
-        site_name=config["name"],
-        primary_color=config["primary_color"],
-        greeting_message=f"Hi! I'm here to help with {config['name']}. How can I assist you today?",
+        site_name=config["site"]["name"],
+        primary_color=config["branding"]["primary_color"],
+        greeting_message=config["branding"]["greeting"],
     )
 
 
