@@ -4,9 +4,21 @@
     {
       "src": "backend/main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "widget/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/chatbot.js",
+      "dest": "/widget/chatbot.js"
+    },
+    {
+      "src": "/chatbot.css",
+      "dest": "/widget/chatbot.css"
+    },
     {
       "src": "/(.*)",
       "dest": "backend/main.py"
