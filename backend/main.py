@@ -101,7 +101,7 @@ async def chat(message: ChatMessage):
     try:
         # Call OpenAI API
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": site_config["system_prompt"]},
                 {"role": "user", "content": message.message},
