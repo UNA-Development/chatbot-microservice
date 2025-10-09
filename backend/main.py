@@ -19,9 +19,11 @@ from openai import OpenAI
 app = FastAPI(title="RX4M Chatbot API", version="2.0.0")
 
 # CORS configuration
+# For production, restrict to actual domains
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins if cors_origins != ["*"] else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
