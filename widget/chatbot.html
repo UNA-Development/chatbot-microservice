@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RX4M Chatbot Widget - Demo</title>
+    <link rel="stylesheet" href="chatbot.css?v=3">
+</head>
+<body>
+    <h1>Chatbot Widget Demo</h1>
+    <p>Click the chat button in the bottom right to test the widget.</p>
+
+    <!-- The actual embeddable widget code starts here -->
+    <div id="rx4m-chatbot-container"></div>
+    <script src="chatbot.js"></script>
+    <script>
+        // Initialize the chatbot
+        // Your lead dev will add this script tag to the website
+        RX4MChatbot.init({
+            apiUrl: 'http://localhost:8000',  // Change to production URL
+            site: 'rx4miracles',  // or 'louisianadental'
+            position: 'bottom-right'
+        });
+    </script>
+</body>
+</html>

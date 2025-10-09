@@ -1,0 +1,79 @@
+# Louisiana Dental Plan Configuration
+site:
+  name: "Louisiana Dental Plan"
+  domain: "louisianadentalplan.com"
+  description: "Louisiana Dental Plan is a Discount Dental Provider Network"
+
+branding:
+  primary_color: "#2c5f2d"
+  greeting: "Welcome to Louisiana Dental Plan! How can we help you today?"
+
+ai:
+  model: "GPT-4o-mini"
+  temperature: 0.4
+  max_tokens: 500
+  system_prompt: |
+    You are a helpful assistant for Louisiana Dental Plan, providing affordable dental coverage to Louisiana residents.
+
+    Be professional, friendly, and patient. Help users with:
+    - Answering FAQs
+    - Answering business information like contact info, hours, and address
+    - Escalating to a human if needed
+
+    IMPORTANT BOUNDARIES:
+    - Do NOT provide specific pricing
+    - Do NOT provide medical or dental advice
+    - Do NOT make promises about coverage for specific procedures
+    - Do NOT share personal account information
+  
+    WHEN YOU DON'T KNOW:
+  If asked about specific account details, complex coverage questions, or anything you're uncertain about, respond with:
+  "I'd be happy to connect you with our team who can help with that specific question. You can reach us at [phone] or visit louisianadentalplan.com for more detailed information."
+  If you need to escalate or don't have specific information, offer to have someone call them back.
+  Be empathetic - dental care can be stressful for many people.
+
+business:
+  contact:
+    phone: "1-(800)-256-1948"
+    email: "response@louisianadentalplan.com"
+    hours: "Monday-Friday, 8:00 AM - 6:00 PM CST" 
+    address: 3636 Sherwood Forest Boulevard, Suite 440, Baton Rouge, LA 70816
+
+faqs: 
+  - question: "What is Louisiana Dental Plan?"
+    answer: "Louisiana Dental Plan is a Discount Dental Provider Network. We arrange for our members to have access to dental providers who have agreed to offer their services at reduced fees."
+    
+  - question: "How do I use Louisiana Dental Plan?"
+    answer: "Present your Membership ID card to any Network Provider, tell the Provider you have Louisiana Dental Plan and pay your total adjusted bill at the time services are rendered."
+    
+  - question: "How much will my monthly payments be to join Louisiana Dental Plan?"
+    answer: "Individual $8.00 per month – Family $12.00 per month – Family membership covers spouse and children (up to the age of 21)"
+    
+  - question: "What is the waiting period before I can use Louisiana Dental Plan?"
+    answer: "There is no waiting period before you can start using the LDP! And, there are no annual/lifetime limits on the number of visits or on the number of procedures you can have with Louisiana Dental Plan."
+    
+  - question: "How much do members save on dental fees?"
+    answer: "Members save 15% – 70% on dental fees when performed by a general dentist in the network. Network specialist fees are discounted 15 – 20% off U&C pricing."
+    
+  - question: "How do I find a list of participating Providers?"
+    answer: "All Provider lists are available 24 hours a day on our website. You can view them from the top of our Home Page."
+    
+  - question: "How do I know which Provider to select?"
+    answer: "You may go to any provider listed on the Louisiana Dental Plan Provider Network."
+    
+  - question: "How do I cancel my plan?"
+    answer: "Cancellation requests must be sent in writing via fax, email or regular mail. Please include your name and member number in the letter. A five (5) day notice prior to your date of bank draft is needed to cancel bank drafts withdrawals."
+
+escalation:
+    keywords: 
+      - "speak to someone"
+      - "human"
+      - "agent"
+      - "supervisor"
+      - "complaint"
+      - "emergency"
+    message: "I understand you'd like to speak with someone directly. Please share your contact information, and our team will call you back as soon as possible."
+
+sms:
+  enabled: false  # Set to true when ready
+  phone_number: ""  # Update with Twilio number
