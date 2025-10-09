@@ -17,6 +17,7 @@
         init: function(options) {
             this.config = { ...this.config, ...options };
             this.config.sessionId = this.generateSessionId();
+            this.config.hasShownGreeting = false;
             this.loadConfig();
             this.createWidget();
             this.attachEventListeners();
@@ -40,11 +41,8 @@
             const root = document.documentElement;
             root.style.setProperty('--chatbot-primary-color', config.primary_color);
 
-            // Update greeting message if widget is already created
-            const greetingEl = document.getElementById('rx4m-chatbot-greeting');
-            if (greetingEl) {
-                greetingEl.textContent = config.greeting_message;
-            }
+            // Store greeting message in config
+            this.config.greetingMessage = config.greeting_message;
         },
 
         createWidget: function() {
@@ -61,8 +59,10 @@
                 <div class="rx4m-chatbot ${positionClass}">
                     <!-- Chat Button -->
                     <button id="rx4m-chat-toggle" class="chat-toggle" aria-label="Open chat">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+                        <svg width="46" height="46" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2.5" y="4.5" width="31" height="22" rx="3" stroke="white" stroke-width="4" fill="none"/>
+                            <path d="M7.5 26.5L13 32L23 32L28.5 26.5" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            <line x1="8.5" y1="12" x2="27.5" y2="12" stroke="white" stroke-width="4" stroke-linecap="round"/>
                         </svg>
                         <span class="notification-badge" style="display: none;">1</span>
                     </button>
@@ -71,17 +71,27 @@
                     <div id="rx4m-chat-window" class="chat-window" style="display: none;">
                         <!-- Header -->
                         <div class="chat-header">
-                            <h3>Chat Support</h3>
+                            <div class="chat-header-content">
+                                <div class="chat-header-icon">
+                                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="20" cy="20" r="20" fill="#1e293b"/>
+                                        <rect x="12" y="13" width="16" height="12" rx="2" stroke="white" stroke-width="2" fill="none"/>
+                                        <path d="M15 25L17 27L23 27L25 25" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                        <line x1="16" y1="17" x2="24" y2="17" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                                        <circle cx="30" cy="14" r="4" fill="#10b981"/>
+                                    </svg>
+                                </div>
+                                <div class="chat-header-text">
+                                    <h3>Text Support</h3>
+                                    <span class="chat-header-subtitle">AI assistant</span>
+                                </div>
+                            </div>
                             <button id="rx4m-chat-close" class="close-button" aria-label="Close chat">×</button>
                         </div>
 
                         <!-- Messages -->
                         <div id="rx4m-chat-messages" class="chat-messages">
-                            <div class="message bot-message">
-                                <div class="message-content" id="rx4m-chatbot-greeting">
-                                    Hi! How can I help you today?
-                                </div>
-                            </div>
+                            <!-- Greeting will be added dynamically -->
                         </div>
 
                         <!-- Input -->
@@ -145,11 +155,35 @@
                 chatWindow.style.display = 'flex';
                 toggleBtn.style.display = 'none';
                 if (badge) badge.style.display = 'none';
+
+                // Show greeting with typing effect on first open
+                if (!this.config.hasShownGreeting) {
+                    this.config.hasShownGreeting = true;
+                    this.showGreetingWithTyping();
+                }
+
                 document.getElementById('rx4m-chat-input').focus();
             } else {
                 chatWindow.style.display = 'none';
                 toggleBtn.style.display = 'flex';
             }
+        },
+
+        showGreetingWithTyping: async function() {
+            // Show typing indicator
+            this.showTypingIndicator();
+
+            // Wait for 1.5 seconds to simulate typing
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Remove typing indicator
+            this.removeTypingIndicator();
+
+            // Get the greeting message (will be updated by loadConfig if available)
+            const greetingMessage = this.config.greetingMessage || `Hi! I'm here to help with ${this.config.site === 'rx4miracles' ? 'RX4 Miracles' : 'Louisiana Dental Plan'}. How can I assist you today?`;
+
+            // Add the greeting message
+            this.addMessage(greetingMessage, 'bot');
         },
 
         sendMessage: async function() {
@@ -198,6 +232,21 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}-message`;
 
+            // Add bot icon for bot messages
+            if (sender === 'bot') {
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'bot-icon';
+                iconDiv.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="12" fill="#1e293b"/>
+                        <rect x="7.5" y="8" width="9" height="7" rx="1.5" stroke="white" stroke-width="1.2" fill="none"/>
+                        <path d="M9 15L10 16L14 16L15 15" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <line x1="9.5" y1="10.5" x2="14.5" y2="10.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                `;
+                messageDiv.appendChild(iconDiv);
+            }
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             contentDiv.textContent = text;
@@ -215,6 +264,14 @@
             typingDiv.id = 'typing-indicator';
             typingDiv.className = 'message bot-message';
             typingDiv.innerHTML = `
+                <div class="bot-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="12" fill="#1e293b"/>
+                        <rect x="7.5" y="8" width="9" height="7" rx="1.5" stroke="white" stroke-width="1.2" fill="none"/>
+                        <path d="M9 15L10 16L14 16L15 15" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <line x1="9.5" y1="10.5" x2="14.5" y2="10.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
                 <div class="message-content typing-indicator">
                     <span></span>
                     <span></span>
