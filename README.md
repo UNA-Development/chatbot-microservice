@@ -1,22 +1,6 @@
 # Chatbot Microservice
 
-AI-powered multi-tenant chat support platform that can host **unlimited companies** from a single deployment.
-
-## 🎯 Key Features
-
-- 🚀 **No Redeployment Needed** - Add companies and update content via API
-- 🏢 **Multi-Tenant** - One server, unlimited chatbots
-- 🤖 **OpenAI GPT-4 powered** conversations
-- 💾 **Database-Driven** - PostgreSQL/SQLite for configs
-- 🎨 **Per-Company Branding** - Custom colors, greetings, knowledge
-- 📱 **Mobile Responsive** widget
-- 🔌 **Admin API** - Full CRUD for companies
-- ⚡ **Production Ready** - Heroku, Railway, or any platform
-
-## 📋 What's New (v3.0 - Multi-Tenant)
-
-**Before:** YAML files, hardcoded companies, redeploy for every change
-**Now:** Database-driven, add companies via API, zero downtime updates
+AI-powered chat support platform.
 
 ## Project Structure
 
@@ -43,8 +27,6 @@ chatbot-microservice/
 ├── .env.example             # Environment variables template
 └── README.md
 ```
-
-## 🚀 Quick Start (Local Development)
 
 ### 1. Install Dependencies
 
@@ -88,7 +70,7 @@ Open `widget/chatbot.html` in your browser.
 
 ## Widget Integration
 
-Your lead dev can integrate the widget by adding these lines to the website:
+You can integrate the widget by adding these lines to the website:
 
 ### For RX4 Miracles (rx4miracles.org):
 
@@ -195,7 +177,7 @@ Update the `greeting` field in the YAML config file.
 
 Edit the `system_prompt` in the YAML config to change how the AI responds.
 
-## 📦 Deployment to Heroku
+## Deployment to Heroku
 
 Your lead dev can deploy this with these simple steps:
 
@@ -362,15 +344,13 @@ All available at `/api/admin/*`:
 - CSS3
 - HTML5
 
-## 📚 Documentation
+## Documentation
 
 - [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide
 - `/docs` - Interactive API documentation (Swagger UI)
 - `/redoc` - Alternative API docs (ReDoc)
 
-## 🆘 Support
 
-For questions or issues, contact the development team.
 
 ## 📄 License
 
