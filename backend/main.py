@@ -1,22 +1,28 @@
 """
-RX4M Chatbot Backend API
-Simple FastAPI server for chat and SMS support with OpenAI Assistants API
+Chatbot Microservice Backend API
+Multi-tenant FastAPI server for chat and SMS support with OpenAI Assistants API
+Database-driven configuration - no redeployment needed for new companies!
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
+from sqlalchemy.orm import Session
 import os
-import yaml
 import traceback
 import re
 from openai import OpenAI
+from models import Company, init_db, get_db
+from admin_api import router as admin_router
 
-app = FastAPI(title="RX4M Chatbot API", version="2.0.0")
+app = FastAPI(title="Multi-Tenant Chatbot API", version="3.0.0")
+
+# Include admin API routes
+app.include_router(admin_router)
 
 # CORS configuration
 app.add_middleware(
@@ -34,39 +40,15 @@ load_dotenv(dotenv_path=env_path, override=True)
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Load minimal site configurations (only branding for widget)
-def load_widget_config(site_name: str) -> dict:
-    """Load minimal widget configuration from YAML"""
-    config_path = Path(__file__).parent.parent / 'config' / f'{site_name}.yaml'
-    try:
-        with open(config_path, 'r') as f:
-            full_config = yaml.safe_load(f)
-            # Only extract what we need for the widget endpoint
-            return {
-                "site": full_config.get("site", {}),
-                "branding": full_config.get("branding", {})
-            }
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Configuration for {site_name} not found")
-
-# Load minimal configurations for widget endpoint only
-WIDGET_CONFIGS = {
-    "rx4miracles": load_widget_config("rx4miracles"),
-    "louisianadental": load_widget_config("louisianadental"),
-}
-
-# Load assistant IDs
-ASSISTANTS = {
-    "rx4miracles": os.getenv("RX4M_ASSISTANT_ID"),
-    "louisianadental": os.getenv("LOUISIANA_ASSISTANT_ID"),
-}
-
-# Verify assistants are configured
-for site, assistant_id in ASSISTANTS.items():
-    if assistant_id:
-        print(f"✓ {site}: assistant {assistant_id}")
-    else:
-        print(f"⚠ {site}: Assistant ID not configured")
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup"""
+    init_db()
+    db = next(get_db())
+    company_count = db.query(Company).count()
+    print(f"✓ Database connected: {company_count} companies loaded")
+    db.close()
 
 
 # Pydantic models
@@ -95,26 +77,34 @@ class WidgetConfig(BaseModel):
 
 
 @app.get("/")
-async def root():
+async def root(db: Session = Depends(get_db)):
     """Health check endpoint"""
+    company_count = db.query(Company).filter(Company.active == True).count()
     return {
         "status": "online",
-        "service": "RX4M Chatbot API",
-        "version": "2.0.0",
-        "rag_provider": "OpenAI Assistants API"
+        "service": "Chatbot Microservice API",
+        "version": "3.0.0",
+        "rag_provider": "OpenAI Assistants API",
+        "active_companies": company_count
     }
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(message: ChatMessage):
+async def chat(message: ChatMessage, db: Session = Depends(get_db)):
     """
     Handle chat messages using OpenAI Assistants API
+    Loads company config from database dynamically
     """
-    if message.site not in ASSISTANTS:
-        raise HTTPException(status_code=400, detail="Invalid site identifier")
+    # Get company from database
+    company = db.query(Company).filter(
+        Company.site_id == message.site,
+        Company.active == True
+    ).first()
 
-    assistant_id = ASSISTANTS.get(message.site)
-    if not assistant_id:
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Company '{message.site}' not found or inactive")
+
+    if not company.assistant_id:
         raise HTTPException(status_code=500, detail=f"Assistant not configured for {message.site}")
 
     try:
@@ -130,7 +120,7 @@ async def chat(message: ChatMessage):
         # Run the assistant
         run = client.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
-            assistant_id=assistant_id
+            assistant_id=company.assistant_id
         )
 
         # Wait for completion and get response
@@ -161,18 +151,23 @@ async def chat(message: ChatMessage):
 
 
 @app.get("/api/config/{site}", response_model=WidgetConfig)
-async def get_widget_config(site: str):
+async def get_widget_config(site: str, db: Session = Depends(get_db)):
     """
     Get widget configuration for a specific site
+    Loads from database - no hardcoded configs!
     """
-    if site not in WIDGET_CONFIGS:
+    company = db.query(Company).filter(
+        Company.site_id == site,
+        Company.active == True
+    ).first()
+
+    if not company:
         raise HTTPException(status_code=404, detail="Site not found")
 
-    config = WIDGET_CONFIGS[site]
     return WidgetConfig(
-        site_name=config["site"]["name"],
-        primary_color=config["branding"]["primary_color"],
-        greeting_message=config["branding"]["greeting"],
+        site_name=company.name,
+        primary_color=company.primary_color,
+        greeting_message=company.greeting,
     )
 
 
@@ -183,6 +178,12 @@ async def sms_webhook(message: SMSMessage):
     TODO: Implement SMS handling with Assistants API
     """
     return {"status": "received", "message": "SMS handling coming soon"}
+
+
+# Serve widget static files
+from fastapi.staticfiles import StaticFiles
+widget_path = Path(__file__).parent.parent / 'widget'
+app.mount("/widget", StaticFiles(directory=str(widget_path)), name="widget")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,11 @@
 # Environment variables
 .env
 
+# Database files (SQLite - local development only)
+*.db
+*.sqlite
+*.sqlite3
+
 # Python
 __pycache__/
 *.py[cod]
@@ -41,3 +46,6 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Legacy files (archived)
+archive/

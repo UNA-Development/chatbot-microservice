@@ -1,71 +1,90 @@
-# RX4M Chatbot
+# Chatbot Microservice
 
-AI-powered chat support for RX4 Miracles and Louisiana Dental Plan websites.
+AI-powered multi-tenant chat support platform that can host **unlimited companies** from a single deployment.
 
-## Features
+## 🎯 Key Features
 
-- 🤖 OpenAI GPT-4 powered conversations
-- 🎨 Customizable widget for each site
-- 📱 Mobile responsive design
-- 💬 SMS support (coming soon)
-- 🔒 CORS-protected API
-- ⚡ Lightweight and fast
+- 🚀 **No Redeployment Needed** - Add companies and update content via API
+- 🏢 **Multi-Tenant** - One server, unlimited chatbots
+- 🤖 **OpenAI GPT-4 powered** conversations
+- 💾 **Database-Driven** - PostgreSQL/SQLite for configs
+- 🎨 **Per-Company Branding** - Custom colors, greetings, knowledge
+- 📱 **Mobile Responsive** widget
+- 🔌 **Admin API** - Full CRUD for companies
+- ⚡ **Production Ready** - Heroku, Railway, or any platform
+
+## 📋 What's New (v3.0 - Multi-Tenant)
+
+**Before:** YAML files, hardcoded companies, redeploy for every change
+**Now:** Database-driven, add companies via API, zero downtime updates
 
 ## Project Structure
 
 ```
-rx4m-chatbot/
+chatbot-microservice/
 ├── backend/
-│   ├── main.py              # FastAPI server
+│   ├── main.py              # FastAPI server (database-driven)
+│   ├── models.py            # Database models (SQLAlchemy)
+│   ├── admin_api.py         # Admin CRUD endpoints
+│   ├── seed_database.py     # Import YAML → Database
+│   ├── setup_assistants.py  # Create/update OpenAI assistants
+│   ├── quick_add_company.py # Interactive company creator
 │   └── requirements.txt     # Python dependencies
 ├── widget/
 │   ├── chatbot.html         # Demo page
 │   ├── chatbot.js           # Widget JavaScript
 │   └── chatbot.css          # Widget styles
-├── config/
-│   ├── rx4miracles.yaml     # RX4 Miracles config
-│   └── louisianadental.yaml # Louisiana Dental config
+├── config/                  # Legacy YAML (for migration only)
+│   ├── rx4miracles.yaml
+│   └── louisianadental.yaml
+├── content/                 # Legacy markdown (for migration only)
+├── Procfile                 # Heroku deployment config
+├── DEPLOYMENT.md            # Full deployment guide
 ├── .env.example             # Environment variables template
 └── README.md
 ```
 
-## Quick Start
+## 🚀 Quick Start (Local Development)
 
-### 1. Set Up Backend
+### 1. Install Dependencies
 
 ```bash
-# Navigate to project
-cd rx4m-chatbot
-
-# Create virtual environment
 cd backend
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
 
-# Create .env file
+### 2. Set Up Environment
+
+```bash
 cd ..
 cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
 ```
 
-### 2. Run Development Server
+### 3. Initialize Database
 
 ```bash
 cd backend
-source venv/bin/activate
-python main.py
+python seed_database.py  # Imports existing companies to database
+python setup_assistants.py  # Creates OpenAI assistants
 ```
 
-Server will start at `http://localhost:8000`
+### 4. Run Server
 
-API docs available at `http://localhost:8000/docs`
+```bash
+python main.py
+# or
+uvicorn main:app --reload
+```
 
-### 3. Test the Widget
+Server: `http://localhost:8000`
+API Docs: `http://localhost:8000/docs`
 
-Open `widget/chatbot.html` in your browser to see the demo.
+### 5. Test the Widget
+
+Open `widget/chatbot.html` in your browser.
 
 ## Widget Integration
 
@@ -176,25 +195,73 @@ Update the `greeting` field in the YAML config file.
 
 Edit the `system_prompt` in the YAML config to change how the AI responds.
 
-## Deployment
+## 📦 Deployment to Heroku
 
-### Backend Deployment (recommended: Railway, Render, Fly.io)
+Your lead dev can deploy this with these simple steps:
 
-1. Set environment variables:
-   - `OPENAI_API_KEY`
-   - `CORS_ORIGINS` (production domains)
+```bash
+# 1. Create Heroku app
+heroku create my-chatbot-api
 
-2. Deploy the `backend/` directory
+# 2. Add PostgreSQL
+heroku addons:create heroku-postgresql:essential-0
 
-3. Note the API URL
+# 3. Set environment
+heroku config:set OPENAI_API_KEY=sk-your-key
 
-### Widget Deployment (recommended: CDN like Cloudflare, Vercel, Netlify)
+# 4. Deploy
+git push heroku main
 
-1. Upload `chatbot.js` and `chatbot.css` to your CDN
+# 5. Initialize database (one time only)
+heroku run bash
+cd backend
+python seed_database.py
+python setup_assistants.py
+exit
+```
 
-2. Update integration code with CDN URLs
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions.**
 
-3. Update `apiUrl` in init() to your backend URL
+## 🎯 Adding New Companies (After Deployment)
+
+### Method 1: Admin API (No Redeployment!)
+
+```bash
+curl -X POST https://your-api.herokuapp.com/api/admin/companies \
+  -H "Content-Type: application/json" \
+  -d '{
+    "site_id": "newcompany",
+    "name": "New Company Inc",
+    "primary_color": "#ff6600",
+    "greeting": "Welcome!",
+    "system_prompt": "You are a helpful assistant...",
+    "knowledge_base": "## About\nNew company information..."
+  }'
+```
+
+Then create the assistant:
+```bash
+heroku run python backend/setup_assistants.py
+```
+
+### Method 2: Interactive Script
+
+```bash
+heroku run bash
+cd backend
+python quick_add_company.py
+# Follow the prompts
+```
+
+## 📝 Updating Knowledge Base (No Redeployment!)
+
+```bash
+curl -X PATCH https://your-api.herokuapp.com/api/admin/companies/rx4miracles/knowledge \
+  -d '{"knowledge_base": "Updated content..."}'
+
+# Then sync the assistant
+heroku run python backend/setup_assistants.py --update
+```
 
 ## Adding SMS Support
 
@@ -239,47 +306,72 @@ curl http://localhost:8000/api/config/rx4miracles
 2. Refresh `widget/chatbot.html` to see changes
 3. Use browser dev tools to debug
 
-## Handoff Checklist for Lead Dev
+## 🔌 Admin API Endpoints
 
-- [ ] Host `chatbot.js` and `chatbot.css` on CDN
-- [ ] Deploy backend API
-- [ ] Update CORS_ORIGINS with production domains
-- [ ] Add widget integration code to both websites
-- [ ] Test on staging before production
-- [ ] Update contact info in YAML configs
-- [ ] Add actual logo URLs
-- [ ] Set up SSL/HTTPS for API
+All available at `/api/admin/*`:
 
-## Environment Variables
+- `GET /api/admin/companies` - List all companies
+- `GET /api/admin/companies/{site_id}` - Get specific company
+- `POST /api/admin/companies` - Create new company
+- `PATCH /api/admin/companies/{site_id}` - Update company
+- `DELETE /api/admin/companies/{site_id}` - Deactivate company
+- `POST /api/admin/companies/{site_id}/activate` - Reactivate company
+- `PATCH /api/admin/companies/{site_id}/knowledge` - Update knowledge only
 
-Required:
-- `OPENAI_API_KEY` - Your OpenAI API key
+**Interactive API docs:** `https://your-api.herokuapp.com/docs`
 
-Optional:
-- `TWILIO_ACCOUNT_SID` - For SMS support
-- `TWILIO_AUTH_TOKEN` - For SMS support
-- `TWILIO_PHONE_NUMBER` - For SMS support
-- `CORS_ORIGINS` - Comma-separated allowed domains
-- `PORT` - Server port (default: 8000)
-- `HOST` - Server host (default: 0.0.0.0)
+## ✅ Handoff Checklist for Lead Dev
 
-## Tech Stack
+**Pre-Deployment:**
+- [ ] Review and test locally
+- [ ] Add `OPENAI_API_KEY` to `.env`
+- [ ] Run `seed_database.py` and `setup_assistants.py`
+
+**Heroku Deployment:**
+- [ ] Create Heroku app
+- [ ] Add PostgreSQL addon
+- [ ] Set `OPENAI_API_KEY` config var
+- [ ] Deploy via `git push heroku main`
+- [ ] Run database seed and setup scripts (one time)
+
+**Widget Integration:**
+- [ ] Host `chatbot.js` and `chatbot.css` on CDN or Vercel
+- [ ] Add widget code to rx4miracles.org
+- [ ] Add widget code to louisianadentalplan.com
+- [ ] Test on staging environments first
+- [ ] Verify chatbot loads and responds
+
+**Post-Launch:**
+- [ ] Monitor Heroku logs for errors
+- [ ] Test adding a new company via API
+- [ ] Test updating knowledge base via API
+- [ ] Document any custom changes
+
+## 🛠️ Tech Stack
 
 **Backend:**
 - Python 3.11+
-- FastAPI
-- OpenAI API
-- Twilio (for SMS)
+- FastAPI (REST API)
+- SQLAlchemy (ORM)
+- PostgreSQL (Heroku) / SQLite (local)
+- OpenAI Assistants API
+- Twilio (SMS - optional)
 
 **Frontend:**
-- Vanilla JavaScript (no framework dependencies)
+- Vanilla JavaScript (no dependencies)
 - CSS3
 - HTML5
 
-## Support
+## 📚 Documentation
 
-For questions or issues, contact the Agent Eva team.
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide
+- `/docs` - Interactive API documentation (Swagger UI)
+- `/redoc` - Alternative API docs (ReDoc)
 
-## License
+## 🆘 Support
+
+For questions or issues, contact the development team.
+
+## 📄 License
 
 Proprietary - Agent Eva
