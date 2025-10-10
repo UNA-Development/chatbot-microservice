@@ -1,12 +1,12 @@
 /**
- * RX4M Chatbot Widget
- * Embeddable chat widget for RX4 Miracles and Louisiana Dental Plan
+ * Chatbot Microservice Widget
+ * Embeddable chat widget for multi-tenant chatbot platform
  */
 
 (function() {
     'use strict';
 
-    const RX4MChatbot = {
+    const ChatbotWidget = {
         config: {
             apiUrl: '',
             site: '',
@@ -290,6 +290,7 @@
         },
     };
 
-    // Export to global scope
-    window.RX4MChatbot = RX4MChatbot;
+    // Export to global scope (keep RX4MChatbot for backward compatibility)
+    window.ChatbotWidget = ChatbotWidget;
+    window.RX4MChatbot = ChatbotWidget; // Backward compatibility alias
 })();
