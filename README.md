@@ -1,6 +1,22 @@
 # Chatbot Microservice
 
-AI-powered chat support platform.
+AI-powered multi-tenant chat support platform that can host multiple chatbots from a single deployment.
+
+## 🎯 Key Features
+
+- 🚀 **No Redeployment Needed** - Add companies and update content via API
+- 🏢 **Multi-Tenant** - One server, unlimited chatbots
+- 🤖 **OpenAI GPT-4 powered** conversations
+- 💾 **Database-Driven** - PostgreSQL/SQLite for configs
+- 🎨 **Per-Company Branding** - Custom colors, greetings, knowledge
+- 📱 **Mobile Responsive** widget
+- 🔌 **Admin API** - Full CRUD for companies
+- ⚡ **Production Ready** - Heroku, Railway, or any platform
+
+## 📋 What's New (v3.0 - Multi-Tenant)
+
+**Before:** YAML files, hardcoded companies, redeploy for every change
+**Now:** Database-driven, add companies via API, zero downtime updates
 
 ## Project Structure
 
