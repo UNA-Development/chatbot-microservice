@@ -21,6 +21,66 @@
             this.loadConfig();
             this.createWidget();
             this.attachEventListeners();
+            this.checkFirstVisit();
+        },
+
+        // Cookie helper functions
+        setCookie: function(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        },
+
+        getCookie: function(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        },
+
+        checkFirstVisit: function() {
+            const hasVisited = this.getCookie('chatbot_visited');
+
+            if (!hasVisited) {
+                // First visit - show bounce animation and tooltip
+                this.showFirstVisitHelp();
+            }
+        },
+
+        showFirstVisitHelp: function() {
+            const toggleBtn = document.getElementById('rx4m-chat-toggle');
+            if (!toggleBtn) return;
+
+            // Add bounce animation
+            toggleBtn.classList.add('first-visit');
+
+            // Create and add tooltip
+            const tooltip = document.createElement('div');
+            tooltip.className = 'chat-tooltip';
+            tooltip.textContent = 'Click here for chat assistance';
+            toggleBtn.parentElement.appendChild(tooltip);
+
+            // Store reference for later removal
+            this.tooltip = tooltip;
+        },
+
+        removeFirstVisitHelp: function() {
+            const toggleBtn = document.getElementById('rx4m-chat-toggle');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('first-visit');
+            }
+
+            if (this.tooltip) {
+                this.tooltip.remove();
+                this.tooltip = null;
+            }
+
+            // Set cookie so it doesn't show again (expires in 365 days)
+            this.setCookie('chatbot_visited', 'true', 365);
         },
 
         generateSessionId: function() {
@@ -152,6 +212,9 @@
             const badge = toggleBtn.querySelector('.notification-badge');
 
             if (chatWindow.style.display === 'none') {
+                // Remove first visit help on first click
+                this.removeFirstVisitHelp();
+
                 chatWindow.style.display = 'flex';
                 toggleBtn.style.display = 'none';
                 if (badge) badge.style.display = 'none';
